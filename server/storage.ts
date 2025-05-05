@@ -25,14 +25,14 @@ export interface IStorage {
   deleteScenario(id: number): Promise<boolean>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Express session store
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private mortgages: Map<number, Mortgage>;
   private scenarios: Map<number, Scenario>;
-  sessionStore: session.SessionStore;
+  sessionStore: any; // Express session store
   
   private userIdCounter: number;
   private mortgageIdCounter: number;

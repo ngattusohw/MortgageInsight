@@ -27,15 +27,22 @@ export const mortgages = pgTable("mortgages", {
   name: text("name").notNull(),
 });
 
-export const insertMortgageSchema = createInsertSchema(mortgages).pick({
-  userId: true,
-  propertyValue: true,
-  mortgageBalance: true,
-  interestRate: true,
-  loanTerm: true,
-  startDate: true,
-  name: true,
-});
+export const insertMortgageSchema = createInsertSchema(mortgages)
+  .pick({
+    userId: true,
+    propertyValue: true,
+    mortgageBalance: true,
+    interestRate: true,
+    loanTerm: true,
+    startDate: true,
+    name: true,
+  })
+  .extend({
+    propertyValue: z.union([z.string().transform(val => Number(val)), z.number()]),
+    mortgageBalance: z.union([z.string().transform(val => Number(val)), z.number()]),
+    interestRate: z.union([z.string().transform(val => Number(val)), z.number()]),
+    loanTerm: z.union([z.string().transform(val => Number(val)), z.number()]),
+  });
 
 export type InsertMortgage = z.infer<typeof insertMortgageSchema>;
 export type Mortgage = typeof mortgages.$inferSelect;
@@ -50,14 +57,22 @@ export const scenarios = pgTable("scenarios", {
   annualLumpSum: numeric("annual_lump_sum"),
 });
 
-export const insertScenarioSchema = createInsertSchema(scenarios).pick({
-  mortgageId: true,
-  name: true,
-  additionalMonthlyPayment: true,
-  isActive: true,
-  biWeeklyPayments: true,
-  annualLumpSum: true,
-});
+export const insertScenarioSchema = createInsertSchema(scenarios)
+  .pick({
+    mortgageId: true,
+    name: true,
+    additionalMonthlyPayment: true,
+    isActive: true,
+    biWeeklyPayments: true,
+    annualLumpSum: true,
+  })
+  .extend({
+    additionalMonthlyPayment: z.union([z.string().transform(val => Number(val)), z.number(), z.null()]).optional(),
+    biWeeklyPayments: z.union([z.string().transform(val => Number(val)), z.number(), z.null()]).optional(),
+    annualLumpSum: z.union([z.string().transform(val => Number(val)), z.number(), z.null()]).optional(),
+    mortgageId: z.union([z.string().transform(val => Number(val)), z.number()]),
+    isActive: z.union([z.string().transform(val => Number(val)), z.number()]),
+  });
 
 export type InsertScenario = z.infer<typeof insertScenarioSchema>;
 export type Scenario = typeof scenarios.$inferSelect;
