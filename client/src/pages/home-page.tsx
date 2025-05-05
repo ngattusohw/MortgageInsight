@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -35,11 +35,11 @@ export default function HomePage() {
   });
 
   // Select the first mortgage by default
-  useState(() => {
+  useEffect(() => {
     if (mortgages?.length && !selectedMortgageId) {
       setSelectedMortgageId(mortgages[0].id);
     }
-  });
+  }, [mortgages, selectedMortgageId]);
 
   // Get the currently selected mortgage
   const selectedMortgage = mortgages?.find(m => m.id === selectedMortgageId) || null;
@@ -148,20 +148,20 @@ export default function HomePage() {
   const handleAdditionalPaymentChange = (amount: number) => {
     setAdditionalPayment(amount);
     
-    if (activeScenario && activeScenario.additionalMonthlyPayment !== amount) {
+    if (activeScenario && Number(activeScenario.additionalMonthlyPayment) !== amount) {
       updateScenarioMutation.mutate({
         id: activeScenario.id,
-        data: { additionalMonthlyPayment: amount }
+        data: { additionalMonthlyPayment: amount.toString() }
       });
     } else if (selectedMortgageId && !activeScenario) {
       createScenarioMutation.mutate({
         mortgageId: selectedMortgageId,
         data: {
           name: `$${amount} Extra Monthly`,
-          additionalMonthlyPayment: amount,
+          additionalMonthlyPayment: amount.toString(),
           isActive: 1,
           biWeeklyPayments: 0,
-          annualLumpSum: 0
+          annualLumpSum: "0"
         }
       });
     }
