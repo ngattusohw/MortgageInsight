@@ -31,6 +31,7 @@ function Router() {
   return (
     <Switch>
       <ProtectedRoute path="/" component={HomePage} />
+      <ProtectedRoute path="/test" component={TestPage} />
       <Route path="/auth" component={LoginPage} />
       <Route component={NotFound} />
     </Switch>

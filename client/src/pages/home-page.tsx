@@ -66,9 +66,13 @@ export default function HomePage() {
       return res.json();
     },
     onSuccess: (newMortgage) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/mortgages"] });
-      // Set the newly created mortgage as the selected one
+      console.log("New mortgage created:", newMortgage);
+      // Set the newly created mortgage as the selected one BEFORE invalidating the query
       setSelectedMortgageId(newMortgage.id);
+      
+      // Then invalidate the query to refresh the mortgages list
+      queryClient.invalidateQueries({ queryKey: ["/api/mortgages"] });
+      
       toast({
         title: "Mortgage created",
         description: "Your mortgage has been successfully created.",
@@ -317,8 +321,8 @@ export default function HomePage() {
                   payments on your mortgage.
                 </p>
 
-                {/* Property Selector - Only shows when there are multiple properties */}
-                {mortgages && mortgages.length > 1 && (
+                {/* Property Selector - Always visible when properties exist */}
+                {mortgages && mortgages.length > 0 && (
                   <div className="mb-4">
                     <label
                       htmlFor="property-select"

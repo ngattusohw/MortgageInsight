@@ -1,7 +1,7 @@
 import React from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/AuthContext";
-import { Home, UserCircle, LogOut } from "lucide-react";
+import { Home, UserCircle, LogOut, TestTube2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
 
 export function Header() {
   const { user } = useAuth();
+  const [location] = useLocation();
 
   const handleLogout = () => {
     window.location.href = "/api/logout";
@@ -24,12 +25,19 @@ export function Header() {
         <div className="flex items-center">
           <Home className="h-5 w-5 text-primary mr-2" />
           <Link href="/">
-            <a className="text-xl font-semibold text-neutral-800">MortgageSaver</a>
+            <span className="text-xl font-semibold text-neutral-800 cursor-pointer">MortgageSaver</span>
           </Link>
         </div>
-
+        
         {user && (
-          <div className="flex items-center">
+          <div className="flex items-center space-x-4">
+            <Link href="/test">
+              <span className={`flex items-center cursor-pointer ${location === '/test' ? 'text-primary-700' : 'text-primary-600 hover:text-primary-800'}`}>
+                <TestTube2 className="h-5 w-5 mr-1" />
+                <span>Test Page</span>
+              </span>
+            </Link>
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center">
