@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext } from "react";
+import React, { createContext, ReactNode, useContext } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { User } from "@shared/schema";
 
@@ -8,7 +8,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
 };
 
-export const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: user, isLoading } = useQuery<User>({
@@ -16,14 +16,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     retry: false,
   });
 
-  const contextValue = {
+  const value = {
     user: user || null,
     isLoading,
     isAuthenticated: !!user
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

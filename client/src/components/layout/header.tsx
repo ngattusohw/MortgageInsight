@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/AuthContext";
 import { Home, UserCircle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,10 +12,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function Header() {
-  const { user, logoutMutation } = useAuth();
+  const { user } = useAuth();
 
   const handleLogout = () => {
-    logoutMutation.mutate();
+    window.location.href = "/api/logout";
   };
 
   return (
