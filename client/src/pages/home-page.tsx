@@ -54,8 +54,10 @@ export default function HomePage() {
       const res = await apiRequest("POST", "/api/mortgages", data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (newMortgage) => {
       queryClient.invalidateQueries({ queryKey: ["/api/mortgages"] });
+      // Set the newly created mortgage as the selected one
+      setSelectedMortgageId(newMortgage.id);
       toast({
         title: "Mortgage created",
         description: "Your mortgage has been successfully created.",
@@ -226,7 +228,7 @@ export default function HomePage() {
       <main className="flex-grow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           
-          {/* Welcome Banner */}
+          {/* Welcome Banner and Property Selector */}
           <div className="bg-primary-50 rounded-lg p-6 mb-8">
             <div className="md:flex items-center justify-between">
               <div>
@@ -236,6 +238,28 @@ export default function HomePage() {
                 <p className="text-neutral-700 mb-4">
                   See how much you can save by making additional principal payments on your mortgage.
                 </p>
+                
+                {/* Property Selector - Only shows when there are multiple properties */}
+                {mortgages && mortgages.length > 1 && (
+                  <div className="mb-4">
+                    <label htmlFor="property-select" className="block text-sm font-medium text-neutral-700 mb-1">
+                      Select Property
+                    </label>
+                    <select
+                      id="property-select"
+                      className="w-full md:w-64 rounded-md border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      value={selectedMortgageId || ''}
+                      onChange={(e) => setSelectedMortgageId(Number(e.target.value))}
+                    >
+                      {mortgages.map(mortgage => (
+                        <option key={mortgage.id} value={mortgage.id}>
+                          {mortgage.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                
                 <div className="flex flex-wrap gap-3">
                   <Button 
                     variant="default"
