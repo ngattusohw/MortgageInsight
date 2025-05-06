@@ -21,10 +21,10 @@ export function formatCurrency(value: number, decimals: number = 0): string {
 /**
  * Formats a percentage value 
  * @param value Number to format as percentage
- * @param decimals Number of decimal places to display (default: 2)
+ * @param decimals Number of decimal places to display (default: 3)
  * @returns Formatted string with % sign
  */
-export function formatPercentage(value: number, decimals: number = 2): string {
+export function formatPercentage(value: number, decimals: number = 3): string {
   return new Intl.NumberFormat('en-US', {
     style: 'percent',
     minimumFractionDigits: decimals,

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type Mortgage } from "@shared/schema";
-import { calculateMonthlyPayment, formatCurrency, formatDate } from "@/utils/mortgage-calculations";
+import { calculateMonthlyPayment, formatCurrency, formatDate, formatPercentage } from "@/utils/mortgage-calculations";
 
 interface MortgageDetailsCardProps {
   mortgage: Mortgage | null;
@@ -70,7 +70,7 @@ export function MortgageDetailsCard({ mortgage, onEditClick }: MortgageDetailsCa
           
           <div>
             <p className="text-sm text-neutral-700 font-medium mb-1">Interest Rate</p>
-            <p className="text-xl font-semibold text-neutral-800">{Number(mortgage.interestRate).toFixed(2)}%</p>
+            <p className="text-xl font-semibold text-neutral-800">{formatPercentage(Number(mortgage.interestRate))}</p>
           </div>
           
           <div>

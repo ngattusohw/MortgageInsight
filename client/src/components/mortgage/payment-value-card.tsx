@@ -38,46 +38,50 @@ export function PaymentValueCard({ mortgage }: PaymentValueCardProps) {
     const timer = setTimeout(() => {
       setIsCalculating(true);
       
-      // Original amortization schedule
-      const originalSchedule = calculateAmortizationSchedule(
-        Number(mortgage.mortgageBalance),
-        Number(mortgage.interestRate) / 100,
-        Number(mortgage.loanTerm)
-      );
-      
-      // Calculate total interest to be paid
-      const originalTotalInterest = originalSchedule.reduce((sum, year) => sum + year.yearlyInterest, 0);
-      
-      // Calculate schedule with lump sum payment
-      const scheduleWithLumpSum = calculateAmortizationWithLumpSum(
-        Number(mortgage.mortgageBalance),
-        Number(mortgage.interestRate) / 100,
-        Number(mortgage.loanTerm),
-        principalPayment
-      );
-      
-      // Calculate total interest with lump sum payment
-      const newTotalInterest = scheduleWithLumpSum.reduce((sum, year) => sum + year.yearlyInterest, 0);
-      
-      // Calculate the interest saved
-      const interestSaved = originalTotalInterest - newTotalInterest;
-      
-      // Calculate time saved
-      const originalYears = originalSchedule.length;
-      const newYears = scheduleWithLumpSum.length;
-      const timeYearsSaved = originalYears - newYears;
-      
-      // Calculate return on investment
-      const returnOnInvestment = (interestSaved / principalPayment) * 100;
-      
-      setResults({
-        interestSaved,
-        timeYearsSaved,
-        returnOnInvestment,
-        totalSavings: principalPayment + interestSaved
-      });
-      
-      setIsCalculating(false);
+      try {
+        // Original amortization schedule
+        const originalSchedule = calculateAmortizationSchedule(
+          Number(mortgage.mortgageBalance),
+          Number(mortgage.interestRate) / 100,
+          Number(mortgage.loanTerm)
+        );
+        
+        // Calculate total interest to be paid
+        const originalTotalInterest = originalSchedule.reduce((sum, year) => sum + year.yearlyInterest, 0);
+        
+        // Calculate schedule with lump sum payment
+        const scheduleWithLumpSum = calculateAmortizationWithLumpSum(
+          Number(mortgage.mortgageBalance),
+          Number(mortgage.interestRate) / 100,
+          Number(mortgage.loanTerm),
+          principalPayment
+        );
+        
+        // Calculate total interest with lump sum payment
+        const newTotalInterest = scheduleWithLumpSum.reduce((sum, year) => sum + year.yearlyInterest, 0);
+        
+        // Calculate the interest saved
+        const interestSaved = originalTotalInterest - newTotalInterest;
+        
+        // Calculate time saved
+        const originalYears = originalSchedule.length;
+        const newYears = scheduleWithLumpSum.length;
+        const timeYearsSaved = originalYears - newYears;
+        
+        // Calculate return on investment
+        const returnOnInvestment = (interestSaved / principalPayment) * 100;
+        
+        setResults({
+          interestSaved,
+          timeYearsSaved,
+          returnOnInvestment,
+          totalSavings: principalPayment + interestSaved
+        });
+      } catch (error) {
+        console.error("Error calculating payment value:", error);
+      } finally {
+        setIsCalculating(false);
+      }
     }, 500);
     
     return () => clearTimeout(timer);
@@ -123,7 +127,7 @@ export function PaymentValueCard({ mortgage }: PaymentValueCardProps) {
               </div>
             </div>
             
-            <div className="flex space-x-3 mb-4">
+            <div className="flex mb-4 relative">
               {displayMode === "dollars" ? (
                 <div className="flex-grow relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">$</span>
@@ -152,13 +156,11 @@ export function PaymentValueCard({ mortgage }: PaymentValueCardProps) {
                   <span className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">%</span>
                 </div>
               )}
-              <Button 
-                className="bg-primary-500 hover:bg-primary-600 text-white" 
-                onClick={handleCalculate}
-                disabled={isCalculating}
-              >
-                {isCalculating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : "Calculate"}
-              </Button>
+              {isCalculating && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary-500" />
+                </div>
+              )}
             </div>
             
             <div className="bg-neutral-50 rounded-md p-4 mb-4">
