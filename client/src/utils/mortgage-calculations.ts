@@ -6,15 +6,30 @@
 /**
  * Formats a number as currency
  * @param value Number to format as currency
+ * @param decimals Number of decimal places to display (default: 0)
  * @returns Formatted string with dollar sign and commas
  */
-export function formatCurrency(value: number): string {
+export function formatCurrency(value: number, decimals: number = 0): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
   }).format(value);
+}
+
+/**
+ * Formats a percentage value 
+ * @param value Number to format as percentage
+ * @param decimals Number of decimal places to display (default: 2)
+ * @returns Formatted string with % sign
+ */
+export function formatPercentage(value: number, decimals: number = 2): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'percent',
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  }).format(value / 100);
 }
 
 /**
@@ -392,4 +407,72 @@ export function calculatePaymentFutureValue(
   // The future value is essentially the additional payment plus all the interest
   // that would have been charged on that amount over the remaining years
   return additionalPayment * Math.pow(1 + annualRate, yearsRemaining);
+}
+
+/**
+ * Represents a mortgage with its payment optimization data
+ */
+export interface MortgageOptimization {
+  id: number;
+  name: string;
+  futureValue: number;
+  returnOnInvestment: number;
+  interestRate: number;
+  yearsRemaining: number;
+}
+
+/**
+ * Calculates the optimal distribution of extra payments across multiple mortgages
+ * @param mortgages Array of mortgage optimization data
+ * @param extraPayment Total extra payment to allocate
+ * @returns Array of mortgages with optimal payment allocation
+ */
+export function calculateOptimalPaymentDistribution(
+  mortgages: MortgageOptimization[],
+  extraPayment: number
+): {
+  mortgageId: number;
+  amount: number;
+  futureValue: number;
+  roi: number;
+}[] {
+  if (mortgages.length === 0 || extraPayment <= 0) {
+    return [];
+  }
+
+  // Sort mortgages by ROI (highest to lowest)
+  const sortedMortgages = [...mortgages].sort((a, b) => b.returnOnInvestment - a.returnOnInvestment);
+  
+  // Allocate the extra payment to mortgages with highest ROI first
+  let remainingPayment = extraPayment;
+  const allocations: {
+    mortgageId: number;
+    amount: number;
+    futureValue: number;
+    roi: number;
+  }[] = [];
+
+  for (const mortgage of sortedMortgages) {
+    if (remainingPayment <= 0) break;
+    
+    // Allocate payment to this mortgage
+    const amount = remainingPayment;
+    remainingPayment = 0;
+    
+    // Calculate the future value and ROI of this payment
+    const futureValue = calculatePaymentFutureValue(
+      amount,
+      mortgage.interestRate / 100,
+      mortgage.yearsRemaining
+    );
+    
+    allocations.push({
+      mortgageId: mortgage.id,
+      amount,
+      futureValue,
+      roi: mortgage.returnOnInvestment
+    });
+  }
+  
+  return allocations;
 }

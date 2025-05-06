@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   calculateAmortizationSchedule,
   calculateAmortizationWithLumpSum,
-  formatCurrency
+  formatCurrency,
+  formatPercentage
 } from "@/utils/mortgage-calculations";
 
 interface PaymentValueCardProps {
@@ -26,13 +27,17 @@ export function PaymentValueCard({ mortgage }: PaymentValueCardProps) {
     totalSavings: number;
   } | null>(null);
 
-  const handleCalculate = () => {
-    if (!mortgage) return;
+  // Calculate results automatically when principal payment changes
+  useEffect(() => {
+    if (!mortgage || principalPayment <= 0) {
+      setResults(null);
+      return;
+    }
     
-    setIsCalculating(true);
-    
-    // Run the calculation on the next tick to allow the UI to update
-    setTimeout(() => {
+    // This will prevent too many re-calculations while user is typing
+    const timer = setTimeout(() => {
+      setIsCalculating(true);
+      
       // Original amortization schedule
       const originalSchedule = calculateAmortizationSchedule(
         Number(mortgage.mortgageBalance),
@@ -73,8 +78,10 @@ export function PaymentValueCard({ mortgage }: PaymentValueCardProps) {
       });
       
       setIsCalculating(false);
-    }, 100);
-  };
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [mortgage, principalPayment]);
 
   if (!mortgage) {
     return (
