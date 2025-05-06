@@ -68,6 +68,11 @@ export function MortgageEditDialog({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{initialData ? "Edit Mortgage Details" : "Add New Mortgage"}</DialogTitle>
+          <p className="text-sm text-muted-foreground mt-2">
+            {initialData 
+              ? "Update the details of this mortgage to see how it affects your payment scenarios." 
+              : "You can add multiple properties to see where extra payments would have the most impact."}
+          </p>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">

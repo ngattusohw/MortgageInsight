@@ -8,6 +8,7 @@ import { PaymentImpactCard } from "@/components/mortgage/payment-impact-card";
 import { AmortizationCard } from "@/components/mortgage/amortization-card";
 import { ScenariosCard } from "@/components/mortgage/scenarios-card";
 import { PaymentValueCard } from "@/components/mortgage/payment-value-card";
+import { OptimalPaymentCard } from "@/components/mortgage/optimal-payment-card";
 import { type Mortgage, type Scenario } from "@shared/schema";
 import { Loader2, Home } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -235,15 +236,27 @@ export default function HomePage() {
                 <p className="text-neutral-700 mb-4">
                   See how much you can save by making additional principal payments on your mortgage.
                 </p>
-                <Button 
-                  variant="default"
-                  className="bg-accent-500 hover:bg-accent-600 text-white"
-                  onClick={() => {
-                    setIsEditModalOpen(true);
-                  }}
-                >
-                  Update payment scenario
-                </Button>
+                <div className="flex flex-wrap gap-3">
+                  <Button 
+                    variant="default"
+                    className="bg-accent-500 hover:bg-accent-600 text-white"
+                    onClick={() => {
+                      setIsEditModalOpen(true);
+                    }}
+                  >
+                    Update payment scenario
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedMortgageId(null);
+                      setIsEditModalOpen(true);
+                    }}
+                  >
+                    Add another property
+                  </Button>
+                </div>
               </div>
               <div className="mt-6 md:mt-0">
                 <img 
@@ -298,6 +311,14 @@ export default function HomePage() {
             <PaymentValueCard 
               mortgage={selectedMortgage}
             />
+            
+            {/* Optimal Payment Card - Only shows when there are multiple mortgages */}
+            {mortgages && mortgages.length > 1 && (
+              <OptimalPaymentCard 
+                mortgages={mortgages}
+                isLoading={isMortgagesLoading}
+              />
+            )}
           </div>
         </div>
       </main>
