@@ -1,6 +1,6 @@
 import { users, mortgages, scenarios, type User, type UpsertUser, type Mortgage, type InsertMortgage, type Scenario, type InsertScenario } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -153,7 +153,7 @@ export class DatabaseStorage implements IStorage {
           and(
             eq(scenarios.mortgageId, scenario.mortgageId),
             eq(scenarios.isActive, 1),
-            neq(scenarios.id, id) // Use 'neq' instead of 'not'
+            ne(scenarios.id, id) // Use 'ne' instead of 'not'
           )
         );
     }
