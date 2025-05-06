@@ -30,6 +30,10 @@ export default function HomePage() {
   >({
     queryKey: ["/api/mortgages"],
     staleTime: 60000, // 1 minute
+    onSuccess: (data) => {
+      console.log("Mortgages loaded:", data);
+      console.log("Number of mortgages:", data?.length);
+    },
   });
 
   // Fetch scenarios for the selected mortgage
@@ -262,11 +266,44 @@ export default function HomePage() {
     );
   }
 
+  // Debug information about mortgage lengths and condition
+  console.log("Before rendering - mortgages array:", mortgages);
+  console.log("Mortgages length:", mortgages?.length);
+  console.log("Should show selector:", mortgages && mortgages.length > 1);
+
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50">
       <Header />
 
       <main className="flex-grow">
+        {/* Debug Property Selector - Always visible */}
+        {mortgages && mortgages.length >= 1 && (
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 bg-yellow-100">
+            <div className="mb-2">
+              <label
+                htmlFor="property-select-debug"
+                className="block text-sm font-medium text-neutral-700 mb-1"
+              >
+                Debug Property Selector ({mortgages.length} properties)
+              </label>
+              <select
+                id="property-select-debug"
+                className="w-full md:w-64 rounded-md border border-neutral-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                value={selectedMortgageId || ""}
+                onChange={(e) =>
+                  setSelectedMortgageId(Number(e.target.value))
+                }
+              >
+                {mortgages.map((mortgage) => (
+                  <option key={mortgage.id} value={mortgage.id}>
+                    {mortgage.name} (ID: {mortgage.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Welcome Banner and Property Selector */}
           <div className="bg-primary-50 rounded-lg p-6 mb-8">
