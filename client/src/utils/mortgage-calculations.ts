@@ -439,39 +439,108 @@ export function calculateOptimalPaymentDistribution(
   if (mortgages.length === 0 || extraPayment <= 0) {
     return [];
   }
-
-  // Sort mortgages by ROI (highest to lowest)
-  const sortedMortgages = [...mortgages].sort((a, b) => b.returnOnInvestment - a.returnOnInvestment);
   
-  // Allocate the extra payment to mortgages with highest ROI first
-  let remainingPayment = extraPayment;
-  const allocations: {
-    mortgageId: number;
-    amount: number;
-    futureValue: number;
-    roi: number;
-  }[] = [];
-
-  for (const mortgage of sortedMortgages) {
-    if (remainingPayment <= 0) break;
+  // Sort mortgages by ROI (return on investment) in descending order
+  const sortedMortgages = [...mortgages].sort((a, b) => 
+    b.returnOnInvestment - a.returnOnInvestment
+  );
+  
+  // First pass - allocate all money to the highest ROI mortgage
+  let allocations = sortedMortgages.map(mortgage => {
+    if (mortgage === sortedMortgages[0]) {
+      const futureValue = calculatePaymentFutureValue(
+        extraPayment,
+        mortgage.interestRate / 100,
+        mortgage.yearsRemaining
+      );
+      return {
+        mortgageId: mortgage.id,
+        amount: extraPayment,
+        futureValue: futureValue,
+        roi: ((futureValue - extraPayment) / extraPayment) * 100
+      };
+    } else {
+      return {
+        mortgageId: mortgage.id,
+        amount: 0,
+        futureValue: 0,
+        roi: 0
+      };
+    }
+  });
+  
+  // Handle edge cases for simple allocation
+  if (mortgages.length <= 1 || extraPayment <= 100) {
+    return allocations;
+  }
+  
+  // Second pass - Proportional allocation for more balanced distribution when ROI difference is small
+  const topMortgages = sortedMortgages.filter(
+    m => m.returnOnInvestment > sortedMortgages[0].returnOnInvestment * 0.85
+  );
+  
+  if (topMortgages.length > 1) {
+    // Calculate total ROI points for top mortgages
+    const totalROI = topMortgages.reduce((sum, m) => sum + m.returnOnInvestment, 0);
     
-    // Allocate payment to this mortgage
-    const amount = remainingPayment;
-    remainingPayment = 0;
-    
-    // Calculate the future value and ROI of this payment
-    const futureValue = calculatePaymentFutureValue(
-      amount,
-      mortgage.interestRate / 100,
-      mortgage.yearsRemaining
-    );
-    
-    allocations.push({
-      mortgageId: mortgage.id,
-      amount,
-      futureValue,
-      roi: mortgage.returnOnInvestment
+    // Distribute based on relative ROI weight
+    allocations = mortgages.map(mortgage => {
+      const topMortgage = topMortgages.find(m => m.id === mortgage.id);
+      
+      if (topMortgage) {
+        const roiWeight = topMortgage.returnOnInvestment / totalROI;
+        const allocatedAmount = Math.round(extraPayment * roiWeight);
+        const futureValue = calculatePaymentFutureValue(
+          allocatedAmount,
+          mortgage.interestRate / 100,
+          mortgage.yearsRemaining
+        );
+        
+        return {
+          mortgageId: mortgage.id,
+          amount: allocatedAmount,
+          futureValue: futureValue,
+          roi: ((futureValue - allocatedAmount) / allocatedAmount) * 100
+        };
+      } else {
+        return {
+          mortgageId: mortgage.id,
+          amount: 0,
+          futureValue: 0,
+          roi: 0
+        };
+      }
     });
+    
+    // Adjust for rounding errors to ensure we allocate exactly the extra payment amount
+    let allocatedTotal = allocations.reduce((sum, a) => sum + a.amount, 0);
+    const difference = extraPayment - allocatedTotal;
+    
+    if (difference !== 0) {
+      // Find the mortgage with the highest ROI and adjust its allocation
+      const highestROIMortgageAllocation = allocations.find(
+        a => a.mortgageId === sortedMortgages[0].id
+      );
+      
+      if (highestROIMortgageAllocation) {
+        // Update the amount
+        highestROIMortgageAllocation.amount += difference;
+        
+        // Recalculate future value and ROI
+        const mortgage = mortgages.find(m => m.id === highestROIMortgageAllocation.mortgageId);
+        if (mortgage) {
+          highestROIMortgageAllocation.futureValue = calculatePaymentFutureValue(
+            highestROIMortgageAllocation.amount,
+            mortgage.interestRate / 100,
+            mortgage.yearsRemaining
+          );
+          
+          highestROIMortgageAllocation.roi = 
+            ((highestROIMortgageAllocation.futureValue - highestROIMortgageAllocation.amount) / 
+             highestROIMortgageAllocation.amount) * 100;
+        }
+      }
+    }
   }
   
   return allocations;
