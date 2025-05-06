@@ -1,17 +1,14 @@
-import { users, type User, type InsertUser, type Mortgage, type InsertMortgage, type Scenario, type InsertScenario } from "@shared/schema";
-import session from "express-session";
-import createMemoryStore from "memorystore";
-
-const MemoryStore = createMemoryStore(session);
+import { users, mortgages, scenarios, type User, type UpsertUser, type Mortgage, type InsertMortgage, type Scenario, type InsertScenario } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
   
   // Mortgage methods
-  getMortgages(userId: number): Promise<Mortgage[]>;
+  getMortgages(userId: string): Promise<Mortgage[]>;
   getMortgage(id: number): Promise<Mortgage | undefined>;
   createMortgage(mortgage: InsertMortgage): Promise<Mortgage>;
   updateMortgage(id: number, mortgage: Partial<InsertMortgage>): Promise<Mortgage | undefined>;
@@ -23,145 +20,166 @@ export interface IStorage {
   createScenario(scenario: InsertScenario): Promise<Scenario>;
   updateScenario(id: number, scenario: Partial<InsertScenario>): Promise<Scenario | undefined>;
   deleteScenario(id: number): Promise<boolean>;
-  
-  // Session store
-  sessionStore: any; // Express session store
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private mortgages: Map<number, Mortgage>;
-  private scenarios: Map<number, Scenario>;
-  sessionStore: any; // Express session store
-  
-  private userIdCounter: number;
-  private mortgageIdCounter: number;
-  private scenarioIdCounter: number;
-
-  constructor() {
-    this.users = new Map();
-    this.mortgages = new Map();
-    this.scenarios = new Map();
-    this.userIdCounter = 1;
-    this.mortgageIdCounter = 1;
-    this.scenarioIdCounter = 1;
-    
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000 // 24 hours in ms
-    });
-  }
-
+export class DatabaseStorage implements IStorage {
   // User methods
-  async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(userData)
+      .onConflictDoUpdate({
+        target: users.id,
+        set: {
+          ...userData,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
     return user;
   }
   
   // Mortgage methods
-  async getMortgages(userId: number): Promise<Mortgage[]> {
-    return Array.from(this.mortgages.values()).filter(
-      (mortgage) => mortgage.userId === userId
-    );
+  async getMortgages(userId: string): Promise<Mortgage[]> {
+    return db.select().from(mortgages).where(eq(mortgages.userId, userId));
   }
   
   async getMortgage(id: number): Promise<Mortgage | undefined> {
-    return this.mortgages.get(id);
+    const [mortgage] = await db.select().from(mortgages).where(eq(mortgages.id, id));
+    return mortgage;
   }
   
   async createMortgage(mortgage: InsertMortgage): Promise<Mortgage> {
-    const id = this.mortgageIdCounter++;
-    const newMortgage: Mortgage = { ...mortgage, id };
-    this.mortgages.set(id, newMortgage);
+    // Convert numeric fields to strings for drizzle
+    const dbMortgage = {
+      ...mortgage,
+      propertyValue: mortgage.propertyValue.toString(),
+      mortgageBalance: mortgage.mortgageBalance.toString(),
+      interestRate: mortgage.interestRate.toString(),
+      loanTerm: mortgage.loanTerm,
+      startDate: new Date(mortgage.startDate).toISOString()
+    };
+    
+    const [newMortgage] = await db.insert(mortgages).values(dbMortgage).returning();
     return newMortgage;
   }
   
   async updateMortgage(id: number, updatedFields: Partial<InsertMortgage>): Promise<Mortgage | undefined> {
-    const mortgage = this.mortgages.get(id);
-    if (!mortgage) return undefined;
+    // Convert numeric fields to strings for drizzle if they exist
+    const dbUpdatedFields: any = { ...updatedFields };
+    if (updatedFields.propertyValue !== undefined) {
+      dbUpdatedFields.propertyValue = updatedFields.propertyValue.toString();
+    }
+    if (updatedFields.mortgageBalance !== undefined) {
+      dbUpdatedFields.mortgageBalance = updatedFields.mortgageBalance.toString();
+    }
+    if (updatedFields.interestRate !== undefined) {
+      dbUpdatedFields.interestRate = updatedFields.interestRate.toString();
+    }
+    if (updatedFields.startDate !== undefined) {
+      dbUpdatedFields.startDate = new Date(updatedFields.startDate).toISOString();
+    }
     
-    const updatedMortgage = { ...mortgage, ...updatedFields };
-    this.mortgages.set(id, updatedMortgage);
+    const [updatedMortgage] = await db
+      .update(mortgages)
+      .set(dbUpdatedFields)
+      .where(eq(mortgages.id, id))
+      .returning();
     return updatedMortgage;
   }
   
   async deleteMortgage(id: number): Promise<boolean> {
-    // Also delete related scenarios
-    if (this.mortgages.has(id)) {
-      const scenarios = await this.getScenarios(id);
-      for (const scenario of scenarios) {
-        await this.deleteScenario(scenario.id);
-      }
-      
-      return this.mortgages.delete(id);
-    }
+    // Delete related scenarios first
+    await db.delete(scenarios).where(eq(scenarios.mortgageId, id));
     
-    return false;
+    // Then delete the mortgage
+    const result = await db.delete(mortgages).where(eq(mortgages.id, id)).returning();
+    return result.length > 0;
   }
   
   // Scenario methods
   async getScenarios(mortgageId: number): Promise<Scenario[]> {
-    return Array.from(this.scenarios.values()).filter(
-      (scenario) => scenario.mortgageId === mortgageId
-    );
+    return db.select().from(scenarios).where(eq(scenarios.mortgageId, mortgageId));
   }
   
   async getScenario(id: number): Promise<Scenario | undefined> {
-    return this.scenarios.get(id);
+    const [scenario] = await db.select().from(scenarios).where(eq(scenarios.id, id));
+    return scenario;
   }
   
   async createScenario(scenario: InsertScenario): Promise<Scenario> {
-    const id = this.scenarioIdCounter++;
-    const newScenario: Scenario = { ...scenario, id };
-    this.scenarios.set(id, newScenario);
-    
-    // If this is marked as active, deactivate other scenarios for the same mortgage
+    // If this scenario is being marked as active, deactivate others
     if (scenario.isActive === 1) {
-      const otherScenarios = await this.getScenarios(scenario.mortgageId);
-      for (const otherScenario of otherScenarios) {
-        if (otherScenario.id !== id && otherScenario.isActive === 1) {
-          await this.updateScenario(otherScenario.id, { isActive: 0 });
-        }
-      }
+      await db
+        .update(scenarios)
+        .set({ isActive: 0 })
+        .where(
+          and(
+            eq(scenarios.mortgageId, scenario.mortgageId),
+            eq(scenarios.isActive, 1)
+          )
+        );
     }
     
+    // Convert numeric fields to strings for drizzle
+    const dbScenario: any = { ...scenario };
+    if (dbScenario.additionalMonthlyPayment !== undefined && dbScenario.additionalMonthlyPayment !== null) {
+      dbScenario.additionalMonthlyPayment = dbScenario.additionalMonthlyPayment.toString();
+    }
+    if (dbScenario.annualLumpSum !== undefined && dbScenario.annualLumpSum !== null) {
+      dbScenario.annualLumpSum = dbScenario.annualLumpSum.toString();
+    }
+    
+    const [newScenario] = await db.insert(scenarios).values(dbScenario).returning();
     return newScenario;
   }
   
   async updateScenario(id: number, updatedFields: Partial<InsertScenario>): Promise<Scenario | undefined> {
-    const scenario = this.scenarios.get(id);
+    const [scenario] = await db.select().from(scenarios).where(eq(scenarios.id, id));
+    
     if (!scenario) return undefined;
     
-    const updatedScenario = { ...scenario, ...updatedFields };
-    this.scenarios.set(id, updatedScenario);
-    
-    // If being marked as active, deactivate other scenarios for the same mortgage
+    // If being marked as active, deactivate others
     if (updatedFields.isActive === 1) {
-      const otherScenarios = await this.getScenarios(scenario.mortgageId);
-      for (const otherScenario of otherScenarios) {
-        if (otherScenario.id !== id && otherScenario.isActive === 1) {
-          await this.updateScenario(otherScenario.id, { isActive: 0 });
-        }
-      }
+      await db
+        .update(scenarios)
+        .set({ isActive: 0 })
+        .where(
+          and(
+            eq(scenarios.mortgageId, scenario.mortgageId),
+            eq(scenarios.isActive, 1),
+            neq(scenarios.id, id) // Use 'neq' instead of 'not'
+          )
+        );
     }
+    
+    // Convert numeric fields to strings for drizzle
+    const dbUpdatedFields: any = { ...updatedFields };
+    if (dbUpdatedFields.additionalMonthlyPayment !== undefined && dbUpdatedFields.additionalMonthlyPayment !== null) {
+      dbUpdatedFields.additionalMonthlyPayment = dbUpdatedFields.additionalMonthlyPayment.toString();
+    }
+    if (dbUpdatedFields.annualLumpSum !== undefined && dbUpdatedFields.annualLumpSum !== null) {
+      dbUpdatedFields.annualLumpSum = dbUpdatedFields.annualLumpSum.toString();
+    }
+    
+    const [updatedScenario] = await db
+      .update(scenarios)
+      .set(dbUpdatedFields)
+      .where(eq(scenarios.id, id))
+      .returning();
     
     return updatedScenario;
   }
   
   async deleteScenario(id: number): Promise<boolean> {
-    return this.scenarios.delete(id);
+    const result = await db.delete(scenarios).where(eq(scenarios.id, id)).returning();
+    return result.length > 0;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

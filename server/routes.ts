@@ -1,22 +1,26 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth } from "./auth";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import { insertMortgageSchema, insertScenarioSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Setup authentication
-  setupAuth(app);
+  // Setup Replit Auth
+  await setupAuth(app);
   
-  // Auth middleware to protect routes
-  const requireAuth = (req: Request, res: Response, next: Function) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
+  // Auth user endpoint
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
     }
-    next();
-  };
+  });
   
   // Helper to format Zod validation errors
   const handleValidation = (schema: any, data: any) => {
@@ -31,16 +35,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
   
   // Mortgage routes
-  app.get("/api/mortgages", requireAuth, async (req, res) => {
+  app.get("/api/mortgages", isAuthenticated, async (req: any, res) => {
     try {
-      const mortgages = await storage.getMortgages(req.user!.id);
+      const userId = req.user.claims.sub;
+      const mortgages = await storage.getMortgages(userId);
       res.json(mortgages);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch mortgages" });
     }
   });
   
-  app.get("/api/mortgages/:id", requireAuth, async (req, res) => {
+  app.get("/api/mortgages/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const mortgage = await storage.getMortgage(id);
@@ -50,7 +55,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if mortgage belongs to the user
-      if (mortgage.userId !== req.user!.id) {
+      const userId = req.user.claims.sub;
+      if (mortgage.userId !== userId) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
@@ -60,11 +66,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/mortgages", requireAuth, async (req, res) => {
+  app.post("/api/mortgages", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { data, error } = handleValidation(insertMortgageSchema, {
         ...req.body,
-        userId: req.user!.id
+        userId
       });
       
       if (error) {
@@ -78,7 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.put("/api/mortgages/:id", requireAuth, async (req, res) => {
+  app.put("/api/mortgages/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const mortgage = await storage.getMortgage(id);
@@ -88,12 +95,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if mortgage belongs to the user
-      if (mortgage.userId !== req.user!.id) {
+      const userId = req.user.claims.sub;
+      if (mortgage.userId !== userId) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
       // Filter out userId to prevent changing ownership
-      const { userId, ...updateData } = req.body;
+      const { userId: _, ...updateData } = req.body;
       
       const updatedMortgage = await storage.updateMortgage(id, updateData);
       res.json(updatedMortgage);
@@ -102,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/mortgages/:id", requireAuth, async (req, res) => {
+  app.delete("/api/mortgages/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const mortgage = await storage.getMortgage(id);
@@ -112,7 +120,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if mortgage belongs to the user
-      if (mortgage.userId !== req.user!.id) {
+      const userId = req.user.claims.sub;
+      if (mortgage.userId !== userId) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
@@ -124,7 +133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Scenario routes
-  app.get("/api/mortgages/:mortgageId/scenarios", requireAuth, async (req, res) => {
+  app.get("/api/mortgages/:mortgageId/scenarios", isAuthenticated, async (req: any, res) => {
     try {
       const mortgageId = parseInt(req.params.mortgageId);
       const mortgage = await storage.getMortgage(mortgageId);
@@ -134,7 +143,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if mortgage belongs to the user
-      if (mortgage.userId !== req.user!.id) {
+      const userId = req.user.claims.sub;
+      if (mortgage.userId !== userId) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
@@ -145,7 +155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.post("/api/mortgages/:mortgageId/scenarios", requireAuth, async (req, res) => {
+  app.post("/api/mortgages/:mortgageId/scenarios", isAuthenticated, async (req: any, res) => {
     try {
       const mortgageId = parseInt(req.params.mortgageId);
       const mortgage = await storage.getMortgage(mortgageId);
@@ -155,7 +165,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if mortgage belongs to the user
-      if (mortgage.userId !== req.user!.id) {
+      const userId = req.user.claims.sub;
+      if (mortgage.userId !== userId) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
@@ -175,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.put("/api/scenarios/:id", requireAuth, async (req, res) => {
+  app.put("/api/scenarios/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const scenario = await storage.getScenario(id);
@@ -185,8 +196,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the associated mortgage belongs to the user
+      const userId = req.user.claims.sub;
       const mortgage = await storage.getMortgage(scenario.mortgageId);
-      if (!mortgage || mortgage.userId !== req.user!.id) {
+      if (!mortgage || mortgage.userId !== userId) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
@@ -200,7 +212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  app.delete("/api/scenarios/:id", requireAuth, async (req, res) => {
+  app.delete("/api/scenarios/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const scenario = await storage.getScenario(id);
@@ -210,8 +222,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if the associated mortgage belongs to the user
+      const userId = req.user.claims.sub;
       const mortgage = await storage.getMortgage(scenario.mortgageId);
-      if (!mortgage || mortgage.userId !== req.user!.id) {
+      if (!mortgage || mortgage.userId !== userId) {
         return res.status(403).json({ message: "Unauthorized" });
       }
       
