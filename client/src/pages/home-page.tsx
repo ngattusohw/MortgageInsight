@@ -437,7 +437,7 @@ export default function HomePage() {
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSubmit={handleMortgageSubmit}
-        initialData={selectedMortgage}
+        initialData={selectedMortgageId ? selectedMortgage : null}
       />
     </div>
   );
