@@ -62,28 +62,42 @@ export default function HomePage() {
   // Create mortgage mutation
   const createMortgageMutation = useMutation({
     mutationFn: async (data: Omit<Mortgage, "id" | "userId">) => {
+      console.log("Creating new mortgage with API call:", data);
       const res = await apiRequest("POST", "/api/mortgages", data);
+      
+      if (!res.ok) {
+        throw new Error(`Failed to create mortgage: ${res.status}`);
+      }
+      
       return res.json();
     },
     onSuccess: (newMortgage) => {
       console.log("New mortgage created:", newMortgage);
       
-      // Invalidate the query to refresh the mortgages list first
+      // Close the modal first
+      setIsEditModalOpen(false);
+      
+      // Invalidate the query to refresh the mortgages list
       queryClient.invalidateQueries({ queryKey: ["/api/mortgages"] });
       
-      // Then set the newly created mortgage as the selected one after a small delay
-      // to ensure the list is refreshed
-      setTimeout(() => setSelectedMortgageId(newMortgage.id), 100);
+      // Wait for the query to finish and then set the new mortgage as selected
+      queryClient.getQueryCache().find({ queryKey: ["/api/mortgages"] })
+        ?.fetch()
+        .then(() => {
+          // Now that we have the latest mortgages, set the selected ID
+          console.log("Setting selected mortgage ID to:", newMortgage.id);
+          setSelectedMortgageId(newMortgage.id);
+        });
       
       toast({
         title: "Mortgage created",
-        description: "Your mortgage has been successfully created.",
+        description: "Your new property has been successfully added.",
       });
-      setIsEditModalOpen(false);
     },
     onError: (error: Error) => {
+      console.error("Failed to create mortgage:", error);
       toast({
-        title: "Failed to create mortgage",
+        title: "Failed to create property",
         description: error.message,
         variant: "destructive",
       });
@@ -99,20 +113,33 @@ export default function HomePage() {
       id: number;
       data: Partial<Mortgage>;
     }) => {
+      console.log("Updating mortgage with API call:", { id, data });
       const res = await apiRequest("PUT", `/api/mortgages/${id}`, data);
+      
+      if (!res.ok) {
+        throw new Error(`Failed to update mortgage: ${res.status}`);
+      }
+      
       return res.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/mortgages"] });
-      toast({
-        title: "Mortgage updated",
-        description: "Your mortgage has been successfully updated.",
-      });
+    onSuccess: (updatedMortgage) => {
+      console.log("Mortgage updated successfully:", updatedMortgage);
+      
+      // Close the modal first
       setIsEditModalOpen(false);
+      
+      // Invalidate the query to refresh the mortgages list
+      queryClient.invalidateQueries({ queryKey: ["/api/mortgages"] });
+      
+      toast({
+        title: "Property updated",
+        description: "Your property details have been successfully updated.",
+      });
     },
     onError: (error: Error) => {
+      console.error("Failed to update mortgage:", error);
       toast({
-        title: "Failed to update mortgage",
+        title: "Failed to update property",
         description: error.message,
         variant: "destructive",
       });
@@ -120,10 +147,21 @@ export default function HomePage() {
   });
 
   const handleMortgageSubmit = (data: any) => {
-    if (selectedMortgageId) {
-      updateMortgageMutation.mutate({ id: selectedMortgageId, data });
-    } else {
+    console.log("Processing mortgage submit:", { 
+      isUpdate: !!selectedMortgageId,
+      selectedMortgageId,
+      formData: data 
+    });
+    
+    // Clear selection before mutation to prevent accidental updates
+    if (!selectedMortgageId) {
+      // This is a create operation
+      console.log("Creating new mortgage with data:", data);
       createMortgageMutation.mutate(data);
+    } else {
+      // This is an update operation
+      console.log("Updating mortgage ID", selectedMortgageId, "with data:", data);
+      updateMortgageMutation.mutate({ id: selectedMortgageId, data });
     }
   };
 
