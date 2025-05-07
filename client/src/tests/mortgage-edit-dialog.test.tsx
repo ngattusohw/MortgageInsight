@@ -1,166 +1,224 @@
 import React from 'react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
-import { MortgageEditDialog } from '../components/mortgage/mortgage-edit-dialog';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MortgageEditDialog } from '@/components/mortgage/mortgage-edit-dialog';
+import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 
-describe('MortgageEditDialog Component', () => {
-  const mockMortgage = {
-    id: 1,
-    userId: '123',
-    propertyValue: 400000,
-    mortgageBalance: 300000,
-    interestRate: 0.05,
-    monthlyPayment: 1610.46,
-    startDate: new Date('2023-01-01'),
-    propertyName: 'Test Property',
-    loanTerm: 30,
-    createdAt: new Date(),
-    updatedAt: new Date()
-  };
+// Mock toast component
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast: vi.fn(),
+  }),
+}));
 
-  const mockOnClose = vi.fn();
-  const mockOnSubmit = vi.fn();
-
-  afterEach(() => {
-    cleanup();
+describe('MortgageEditDialog', () => {
+  // Set up common test props
+  const onSubmitMock = vi.fn();
+  const onCloseMock = vi.fn();
+  
+  beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('should render with correct form fields when creating a new mortgage', () => {
+  it('renders correctly for creating a new mortgage', async () => {
     render(
-      <MortgageEditDialog 
-        isOpen={true} 
-        onClose={mockOnClose} 
-        onSubmit={mockOnSubmit} 
-        initialData={null} 
+      <MortgageEditDialog
+        isOpen={true}
+        onClose={onCloseMock}
+        onSubmit={onSubmitMock}
+        initialData={null}
       />
     );
 
-    // Form should render with empty fields
-    expect(screen.getByLabelText(/property name/i)).toHaveValue('');
-    expect(screen.getByLabelText(/property value/i)).toHaveValue('');
+    // Check if the dialog title is "Add New Property"
+    expect(screen.getByText('Add New Property')).toBeInTheDocument();
+    
+    // Check if form fields are empty
+    expect(screen.getByLabelText(/Property Name/i)).toHaveValue('');
+    expect(screen.getByLabelText(/Property Value/i)).toHaveValue('');
+    expect(screen.getByLabelText(/Mortgage Balance/i)).toHaveValue('');
+    expect(screen.getByLabelText(/Interest Rate/i)).toHaveValue('');
+    expect(screen.getByLabelText(/Loan Term/i)).toHaveValue('30');
+    
+    // Today's date should be set as default
+    const today = new Date().toISOString().split('T')[0];
+    expect(screen.getByLabelText(/Start Date/i)).toHaveValue(today);
   });
 
-  it('should render with populated form fields when editing existing mortgage', () => {
+  it('renders correctly with initial data for editing', async () => {
+    const mockMortgage = {
+      id: 1,
+      userId: 'user123',
+      name: 'Test Property',
+      propertyValue: '500000',
+      mortgageBalance: '400000',
+      interestRate: '0.04',
+      loanTerm: 30,
+      startDate: '2023-01-01',
+    };
+
     render(
-      <MortgageEditDialog 
-        isOpen={true} 
-        onClose={mockOnClose} 
-        onSubmit={mockOnSubmit} 
-        initialData={mockMortgage} 
+      <MortgageEditDialog
+        isOpen={true}
+        onClose={onCloseMock}
+        onSubmit={onSubmitMock}
+        initialData={mockMortgage}
       />
     );
 
-    // Form should be populated with mortgage data
-    expect(screen.getByLabelText(/property name/i)).toHaveValue('Test Property');
-    expect(screen.getByLabelText(/property value/i)).toHaveValue('400000');
-    expect(screen.getByLabelText(/mortgage balance/i)).toHaveValue('300000');
-    expect(screen.getByLabelText(/interest rate/i)).toHaveValue('5');
-    expect(screen.getByLabelText(/loan term/i)).toHaveValue('30');
+    // Check if the dialog title is "Edit Property"
+    expect(screen.getByText('Edit Property')).toBeInTheDocument();
+    
+    // Check if form fields have the correct initial values
+    expect(screen.getByLabelText(/Property Name/i)).toHaveValue('Test Property');
+    expect(screen.getByLabelText(/Property Value/i)).toHaveValue('500000');
+    expect(screen.getByLabelText(/Mortgage Balance/i)).toHaveValue('400000');
+    expect(screen.getByLabelText(/Interest Rate/i)).toHaveValue('4');
+    expect(screen.getByLabelText(/Loan Term/i)).toHaveValue('30');
+    expect(screen.getByLabelText(/Start Date/i)).toHaveValue('2023-01-01');
   });
 
-  it('should validate form fields and prevent submission with invalid data', async () => {
+  it('submits form with correct values when creating a new mortgage', async () => {
+    const user = userEvent.setup();
+    
     render(
-      <MortgageEditDialog 
-        isOpen={true} 
-        onClose={mockOnClose} 
-        onSubmit={mockOnSubmit} 
-        initialData={null} 
-      />
-    );
-
-    // Try to submit with invalid data
-    const submitButton = screen.getByRole('button', { name: /save/i });
-    fireEvent.click(submitButton);
-
-    // Should show validation errors
-    await waitFor(() => {
-      expect(screen.getByText(/property name is required/i)).toBeInTheDocument();
-    });
-
-    // onSubmit should not be called
-    expect(mockOnSubmit).not.toHaveBeenCalled();
-  });
-
-  it('should call onSubmit with form data when submitted with valid data', async () => {
-    render(
-      <MortgageEditDialog 
-        isOpen={true} 
-        onClose={mockOnClose} 
-        onSubmit={mockOnSubmit} 
-        initialData={null} 
+      <MortgageEditDialog
+        isOpen={true}
+        onClose={onCloseMock}
+        onSubmit={onSubmitMock}
+        initialData={null}
       />
     );
 
     // Fill out the form
-    fireEvent.change(screen.getByLabelText(/property name/i), {
-      target: { value: 'New Property' },
-    });
-    fireEvent.change(screen.getByLabelText(/property value/i), {
-      target: { value: '350000' },
-    });
-    fireEvent.change(screen.getByLabelText(/mortgage balance/i), {
-      target: { value: '280000' },
-    });
-    fireEvent.change(screen.getByLabelText(/interest rate/i), {
-      target: { value: '4.5' },
-    });
-    fireEvent.change(screen.getByLabelText(/monthly payment/i), {
-      target: { value: '1500' },
-    });
-    fireEvent.change(screen.getByLabelText(/loan term/i), {
-      target: { value: '30' },
-    });
-
+    await user.type(screen.getByLabelText(/Property Name/i), 'New Test Property');
+    await user.type(screen.getByLabelText(/Property Value/i), '600000');
+    await user.type(screen.getByLabelText(/Mortgage Balance/i), '550000');
+    await user.type(screen.getByLabelText(/Interest Rate/i), '3.5');
+    
+    // Select loan term
+    await user.click(screen.getByLabelText(/Loan Term/i));
+    await user.selectOptions(screen.getByLabelText(/Loan Term/i), '15');
+    
+    // Set start date
+    const startDateInput = screen.getByLabelText(/Start Date/i);
+    fireEvent.change(startDateInput, { target: { value: '2023-05-15' } });
+    
     // Submit the form
-    const submitButton = screen.getByRole('button', { name: /save/i });
-    fireEvent.click(submitButton);
-
-    // onSubmit should be called with the form data
+    await user.click(screen.getByRole('button', { name: /Add Property/i }));
+    
+    // Wait for the form to be submitted
     await waitFor(() => {
-      expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining({
-        propertyName: 'New Property',
-        propertyValue: 350000,
-        mortgageBalance: 280000,
-        interestRate: 0.045, // Converted from percentage to decimal
-        monthlyPayment: 1500,
-        loanTerm: 30
-      }));
+      expect(onSubmitMock).toHaveBeenCalledTimes(1);
+    });
+    
+    // Check the submitted values
+    expect(onSubmitMock).toHaveBeenCalledWith({
+      name: 'New Test Property',
+      propertyValue: 600000,
+      mortgageBalance: 550000,
+      interestRate: 0.035,
+      loanTerm: 15,
+      startDate: '2023-05-15',
     });
   });
 
-  it('should close the dialog when cancel button is clicked', () => {
+  it('submits form with correct values when updating an existing mortgage', async () => {
+    const user = userEvent.setup();
+    
+    const mockMortgage = {
+      id: 1,
+      userId: 'user123',
+      name: 'Original Property',
+      propertyValue: '500000',
+      mortgageBalance: '400000',
+      interestRate: '0.04',
+      loanTerm: 30,
+      startDate: '2023-01-01',
+    };
+    
     render(
-      <MortgageEditDialog 
-        isOpen={true} 
-        onClose={mockOnClose} 
-        onSubmit={mockOnSubmit} 
-        initialData={null} 
+      <MortgageEditDialog
+        isOpen={true}
+        onClose={onCloseMock}
+        onSubmit={onSubmitMock}
+        initialData={mockMortgage}
       />
     );
 
-    const cancelButton = screen.getByRole('button', { name: /cancel/i });
-    fireEvent.click(cancelButton);
-
-    expect(mockOnClose).toHaveBeenCalled();
+    // Clear and update the property name
+    const nameInput = screen.getByLabelText(/Property Name/i);
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Updated Property');
+    
+    // Clear and update the property value
+    const valueInput = screen.getByLabelText(/Property Value/i);
+    await user.clear(valueInput);
+    await user.type(valueInput, '525000');
+    
+    // Submit the form
+    await user.click(screen.getByRole('button', { name: /Update Property/i }));
+    
+    // Wait for the form to be submitted
+    await waitFor(() => {
+      expect(onSubmitMock).toHaveBeenCalledTimes(1);
+    });
+    
+    // Check the submitted values - should include all fields, not just the changed ones
+    expect(onSubmitMock).toHaveBeenCalledWith({
+      name: 'Updated Property',
+      propertyValue: 525000,
+      mortgageBalance: 400000,
+      interestRate: 0.04,
+      loanTerm: 30,
+      startDate: '2023-01-01',
+    });
   });
 
-  it('should handle initialData=null properly', () => {
+  it('validates required fields and displays errors', async () => {
+    const user = userEvent.setup();
+    
     render(
-      <MortgageEditDialog 
-        isOpen={true} 
-        onClose={mockOnClose} 
-        onSubmit={mockOnSubmit} 
-        initialData={null} 
+      <MortgageEditDialog
+        isOpen={true}
+        onClose={onCloseMock}
+        onSubmit={onSubmitMock}
+        initialData={null}
       />
     );
 
-    // Form should render with default values
-    expect(screen.getByLabelText(/property name/i)).toHaveValue('');
-    expect(screen.getByLabelText(/property value/i)).toHaveValue('');
-    expect(screen.getByLabelText(/mortgage balance/i)).toHaveValue('');
-    expect(screen.getByLabelText(/interest rate/i)).toHaveValue('');
-    expect(screen.getByLabelText(/monthly payment/i)).toHaveValue('');
-    expect(screen.getByLabelText(/loan term/i)).toHaveValue('30'); // Default
+    // Submit the form without filling out required fields
+    await user.click(screen.getByRole('button', { name: /Add Property/i }));
+    
+    // Check that validation errors are displayed
+    await waitFor(() => {
+      expect(screen.getByText(/Property name is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/Property value is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/Mortgage balance is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/Interest rate is required/i)).toBeInTheDocument();
+    });
+    
+    // Ensure onSubmit wasn't called
+    expect(onSubmitMock).not.toHaveBeenCalled();
+  });
+
+  it('closes the dialog when cancel button is clicked', async () => {
+    const user = userEvent.setup();
+    
+    render(
+      <MortgageEditDialog
+        isOpen={true}
+        onClose={onCloseMock}
+        onSubmit={onSubmitMock}
+        initialData={null}
+      />
+    );
+
+    // Click the cancel button
+    await user.click(screen.getByRole('button', { name: /Cancel/i }));
+    
+    // Check that onClose was called
+    expect(onCloseMock).toHaveBeenCalledTimes(1);
   });
 });

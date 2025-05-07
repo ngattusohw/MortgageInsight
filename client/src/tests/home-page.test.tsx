@@ -1,96 +1,114 @@
 import React from 'react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import HomePage from '@/pages/home-page';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import HomePage from '../pages/home-page';
+import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 
-// Mock the auth context
-vi.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({
-    user: { id: '123', username: 'testuser' },
-    isLoading: false,
-    isAuthenticated: true,
-  }),
+// Mock necessary dependencies and components
+vi.mock('@/components/layout/header', () => ({
+  Header: () => <div data-testid="mock-header">Header Component</div>,
 }));
 
-// Mock react-query hooks
-vi.mock('@tanstack/react-query', async () => {
-  const actual = await vi.importActual('@tanstack/react-query');
-  return {
-    ...actual,
-    useQuery: vi.fn().mockImplementation(({ queryKey }) => {
-      if (queryKey.includes('/api/mortgages')) {
-        return {
-          data: [
-            {
-              id: 1,
-              userId: '123',
-              propertyValue: 400000,
-              mortgageBalance: 300000,
-              interestRate: 0.05,
-              monthlyPayment: 1610.46,
-              startDate: new Date('2023-01-01'),
-              propertyName: 'Test Property 1',
-              loanTerm: 30,
-              createdAt: new Date(),
-              updatedAt: new Date()
-            }
-          ],
-          isLoading: false,
-          error: null,
-        };
-      }
-      if (queryKey.includes('/api/mortgages') && queryKey.includes('/scenarios')) {
-        return {
-          data: [],
-          isLoading: false,
-          error: null,
-        };
-      }
-      return {
-        data: undefined,
-        isLoading: false,
-        error: null,
-      };
-    }),
-    useMutation: vi.fn().mockImplementation(() => ({
-      mutate: vi.fn(),
-      isPending: false,
-      isError: false,
-      error: null,
-    })),
-  };
-});
+vi.mock('@/components/layout/footer', () => ({
+  Footer: () => <div data-testid="mock-footer">Footer Component</div>,
+}));
 
-// Mock the mortgage dialog component
-vi.mock('../components/mortgage/mortgage-edit-dialog', () => ({
-  MortgageEditDialog: ({ isOpen, onClose, onSubmit, initialData }) => (
-    isOpen ? (
-      <div data-testid="mortgage-dialog">
-        <button onClick={() => onClose()}>Cancel</button>
-        <button 
-          onClick={() => onSubmit({
-            propertyName: initialData ? initialData.propertyName : 'New Property',
-            propertyValue: initialData ? initialData.propertyValue : 350000,
-            mortgageBalance: initialData ? initialData.mortgageBalance : 280000,
-            interestRate: initialData ? initialData.interestRate : 0.045,
-            monthlyPayment: initialData ? initialData.monthlyPayment : 1500,
-            loanTerm: initialData ? initialData.loanTerm : 30,
-          })}
-        >
-          Save
-        </button>
-        <div>
-          Initial Property: {initialData ? initialData.propertyName : 'None'}
-        </div>
-      </div>
-    ) : null
+vi.mock('@/components/mortgage/mortgage-details-card', () => ({
+  MortgageDetailsCard: ({ mortgage, onEditClick }) => (
+    <div data-testid="mortgage-details-card">
+      <div>Property Name: {mortgage?.name}</div>
+      <button onClick={onEditClick}>Edit Property</button>
+    </div>
   ),
 }));
 
-describe('HomePage Component', () => {
-  let queryClient: QueryClient;
+vi.mock('@/components/mortgage/payment-impact-card', () => ({
+  PaymentImpactCard: () => <div data-testid="payment-impact-card">Payment Impact Card</div>,
+}));
 
+vi.mock('@/components/mortgage/amortization-card', () => ({
+  AmortizationCard: () => <div data-testid="amortization-card">Amortization Card</div>,
+}));
+
+vi.mock('@/components/mortgage/scenarios-card', () => ({
+  ScenariosCard: () => <div data-testid="scenarios-card">Scenarios Card</div>,
+}));
+
+vi.mock('@/components/mortgage/payment-value-card', () => ({
+  PaymentValueCard: () => <div data-testid="payment-value-card">Payment Value Card</div>,
+}));
+
+vi.mock('@/components/mortgage/optimal-payment-card', () => ({
+  OptimalPaymentCard: () => <div data-testid="optimal-payment-card">Optimal Payment Card</div>,
+}));
+
+vi.mock('@/components/mortgage/mortgage-edit-dialog', () => ({
+  MortgageEditDialog: ({ isOpen, onClose, onSubmit, initialData }) => (
+    <div data-testid="mortgage-edit-dialog">
+      <p>
+        {isOpen ? 'Dialog Open' : 'Dialog Closed'} - 
+        {initialData ? `Editing ${initialData.name}` : 'Creating New Property'}
+      </p>
+      <button onClick={() => onSubmit({ name: 'New Property', propertyValue: 300000, mortgageBalance: 250000, interestRate: 0.04, loanTerm: 30, startDate: '2023-01-01' })}>
+        Submit Form
+      </button>
+      <button onClick={onClose}>Close Dialog</button>
+    </div>
+  ),
+}));
+
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast: vi.fn(),
+  }),
+}));
+
+// Mock the lib/queryClient to return our test data
+vi.mock('@/lib/queryClient', () => {
+  const actual = vi.importActual('@/lib/queryClient');
+  return {
+    ...actual,
+    apiRequest: vi.fn().mockImplementation((method, url, data) => {
+      if (method === 'POST' && url === '/api/mortgages') {
+        return {
+          ok: true,
+          json: () => Promise.resolve({
+            id: 3,
+            name: data.name || 'New Property',
+            propertyValue: data.propertyValue || 300000,
+            mortgageBalance: data.mortgageBalance || 250000,
+            interestRate: data.interestRate || 0.04,
+            loanTerm: data.loanTerm || 30,
+            startDate: data.startDate || '2023-01-01',
+            userId: 'user123',
+          }),
+        };
+      } else if (method === 'PUT' && url.startsWith('/api/mortgages/')) {
+        const id = Number(url.split('/').pop());
+        return {
+          ok: true,
+          json: () => Promise.resolve({
+            id,
+            name: data.name,
+            propertyValue: data.propertyValue,
+            mortgageBalance: data.mortgageBalance,
+            interestRate: data.interestRate,
+            loanTerm: data.loanTerm,
+            startDate: data.startDate,
+            userId: 'user123',
+          }),
+        };
+      }
+      return { ok: true, json: () => Promise.resolve({}) };
+    }),
+  };
+});
+
+describe('HomePage', () => {
+  let queryClient: QueryClient;
+  
   beforeEach(() => {
     queryClient = new QueryClient({
       defaultOptions: {
@@ -99,82 +117,227 @@ describe('HomePage Component', () => {
         },
       },
     });
+    
+    // Mock fetch for API calls
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url === '/api/mortgages') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 1,
+              name: 'Property 1',
+              propertyValue: '400000',
+              mortgageBalance: '350000',
+              interestRate: '0.045',
+              loanTerm: 30,
+              startDate: '2023-01-01',
+              userId: 'user123',
+            },
+            {
+              id: 2,
+              name: 'Property 2',
+              propertyValue: '500000',
+              mortgageBalance: '450000',
+              interestRate: '0.04',
+              loanTerm: 30,
+              startDate: '2023-01-01',
+              userId: 'user123',
+            },
+          ]),
+        });
+      } else if (url.includes('/api/mortgages/') && url.includes('/scenarios')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+    });
   });
 
-  afterEach(() => {
-    cleanup();
-    vi.clearAllMocks();
-  });
-
-  it('should render existing properties', async () => {
+  it('renders loading state initially', async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <HomePage />
       </QueryClientProvider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Test Property 1')).toBeInTheDocument();
-    });
+    expect(screen.getByText(/Loading your mortgage data/i)).toBeInTheDocument();
   });
 
-  it('should open edit dialog with property data when Update payment scenario is clicked', async () => {
+  it('renders multiple properties and allows switching between them', async () => {
+    const user = userEvent.setup();
+    
     render(
       <QueryClientProvider client={queryClient}>
         <HomePage />
       </QueryClientProvider>
     );
 
-    const updateButton = screen.getByText('Update payment scenario');
-    fireEvent.click(updateButton);
-
+    // Wait for data to load
     await waitFor(() => {
-      expect(screen.getByTestId('mortgage-dialog')).toBeInTheDocument();
-      expect(screen.getByText('Initial Property: Test Property 1')).toBeInTheDocument();
+      expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
+    });
+
+    // Check that property selector shows both properties
+    const propertySelect = screen.getByLabelText(/Select Property/i);
+    expect(propertySelect).toBeInTheDocument();
+    
+    // There should be 2 options
+    const options = screen.getAllByRole('option');
+    expect(options.length).toBe(2);
+    
+    // The first property should be selected by default
+    expect(screen.getByText(/Property Name: Property 1/i)).toBeInTheDocument();
+    
+    // Switch to the second property
+    await user.selectOptions(propertySelect, '2');
+    
+    // The second property should now be displayed
+    await waitFor(() => {
+      expect(screen.getByText(/Property Name: Property 2/i)).toBeInTheDocument();
     });
   });
 
-  it('should open dialog with null initialData when Add another property is clicked', async () => {
+  it('opens edit dialog with the selected property data when edit button is clicked', async () => {
+    const user = userEvent.setup();
+    
     render(
       <QueryClientProvider client={queryClient}>
         <HomePage />
       </QueryClientProvider>
     );
 
-    const addButton = screen.getByText('Add another property');
-    fireEvent.click(addButton);
-
+    // Wait for data to load
     await waitFor(() => {
-      expect(screen.getByTestId('mortgage-dialog')).toBeInTheDocument();
-      expect(screen.getByText('Initial Property: None')).toBeInTheDocument();
+      expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
     });
+
+    // Click the edit button on the mortgage details card
+    const editButton = screen.getByText(/Edit Property/i);
+    await user.click(editButton);
+    
+    // Check that the dialog is open with the correct property data
+    expect(screen.getByText(/Dialog Open/i)).toBeInTheDocument();
+    expect(screen.getByText(/Editing Property 1/i)).toBeInTheDocument();
   });
 
-  it('should reset selectedMortgageId when Add another property is clicked', async () => {
+  it('opens create dialog with empty data when add property button is clicked', async () => {
+    const user = userEvent.setup();
+    
     render(
       <QueryClientProvider client={queryClient}>
         <HomePage />
       </QueryClientProvider>
     );
 
-    // First click Update to select a mortgage
-    const updateButton = screen.getByText('Update payment scenario');
-    fireEvent.click(updateButton);
-    
+    // Wait for data to load
     await waitFor(() => {
-      expect(screen.getByText('Initial Property: Test Property 1')).toBeInTheDocument();
+      expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
+    });
+
+    // Click the add property button
+    const addButton = screen.getByText(/Add another property/i);
+    await user.click(addButton);
+    
+    // Check that the dialog is open for creating a new property
+    expect(screen.getByText(/Dialog Open/i)).toBeInTheDocument();
+    expect(screen.getByText(/Creating New Property/i)).toBeInTheDocument();
+  });
+
+  it('creates a new property without overwriting existing ones', async () => {
+    const user = userEvent.setup();
+    
+    render(
+      <QueryClientProvider client={queryClient}>
+        <HomePage />
+      </QueryClientProvider>
+    );
+
+    // Wait for data to load
+    await waitFor(() => {
+      expect(screen.getByText(/Welcome back/i)).toBeInTheDocument();
+    });
+
+    // Initial check - Property 1 should be visible
+    expect(screen.getByText(/Property Name: Property 1/i)).toBeInTheDocument();
+
+    // Add a new property
+    const addButton = screen.getByText(/Add another property/i);
+    await user.click(addButton);
+    
+    // Submit the dialog form for the new property
+    const submitButton = screen.getByText(/Submit Form/i);
+    await user.click(submitButton);
+    
+    // Mock fetch to add the new property to the list
+    global.fetch = vi.fn().mockImplementation((url) => {
+      if (url === '/api/mortgages') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([
+            {
+              id: 1,
+              name: 'Property 1',
+              propertyValue: '400000',
+              mortgageBalance: '350000',
+              interestRate: '0.045',
+              loanTerm: 30,
+              startDate: '2023-01-01',
+              userId: 'user123',
+            },
+            {
+              id: 2,
+              name: 'Property 2',
+              propertyValue: '500000',
+              mortgageBalance: '450000',
+              interestRate: '0.04',
+              loanTerm: 30,
+              startDate: '2023-01-01',
+              userId: 'user123',
+            },
+            {
+              id: 3,
+              name: 'New Property',
+              propertyValue: '300000',
+              mortgageBalance: '250000',
+              interestRate: '0.04',
+              loanTerm: 30,
+              startDate: '2023-01-01',
+              userId: 'user123',
+            },
+          ]),
+        });
+      } else if (url.includes('/api/mortgages/') && url.includes('/scenarios')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
     });
     
-    // Close the dialog
-    const cancelButton = screen.getByText('Cancel');
-    fireEvent.click(cancelButton);
-    
-    // Now click Add another property
-    const addButton = screen.getByText('Add another property');
-    fireEvent.click(addButton);
-    
+    // Wait for the new property to be shown
     await waitFor(() => {
-      expect(screen.getByText('Initial Property: None')).toBeInTheDocument();
+      // Check that the optimal payment card is shown (for multiple properties)
+      expect(screen.getByTestId('optimal-payment-card')).toBeInTheDocument();
     });
+    
+    // The property select should now have 3 options
+    const options = screen.getAllByRole('option');
+    expect(options.length).toBe(3);
+    
+    // All properties should be in the dropdown
+    const optionTexts = options.map(option => option.textContent);
+    expect(optionTexts).toContain('Property 1');
+    expect(optionTexts).toContain('Property 2');
+    expect(optionTexts).toContain('New Property');
   });
 });
