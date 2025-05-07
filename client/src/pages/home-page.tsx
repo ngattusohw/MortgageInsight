@@ -67,11 +67,13 @@ export default function HomePage() {
     },
     onSuccess: (newMortgage) => {
       console.log("New mortgage created:", newMortgage);
-      // Set the newly created mortgage as the selected one BEFORE invalidating the query
-      setSelectedMortgageId(newMortgage.id);
       
-      // Then invalidate the query to refresh the mortgages list
+      // Invalidate the query to refresh the mortgages list first
       queryClient.invalidateQueries({ queryKey: ["/api/mortgages"] });
+      
+      // Then set the newly created mortgage as the selected one after a small delay
+      // to ensure the list is refreshed
+      setTimeout(() => setSelectedMortgageId(newMortgage.id), 100);
       
       toast({
         title: "Mortgage created",

@@ -13,17 +13,27 @@ const mortgageFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   propertyValue: z.string().min(1, "Property value is required").transform(val => Number(val.replace(/[^0-9.]/g, ''))),
   mortgageBalance: z.string().min(1, "Mortgage balance is required").transform(val => Number(val.replace(/[^0-9.]/g, ''))),
-  interestRate: z.string().min(1, "Interest rate is required").transform(val => Number(val.replace(/[^0-9.]/g, ''))),
+  interestRate: z.string().min(1, "Interest rate is required").transform(val => Number(val.replace(/[^0-9.]/g, ''))/100), // Convert percentage to decimal
   loanTerm: z.string().min(1, "Loan term is required"),
   startDate: z.string().min(1, "Start date is required"),
 });
 
 type MortgageFormValues = z.infer<typeof mortgageFormSchema>;
 
+// Define the shape of data that will be submitted from the form
+type MortgageSubmitData = {
+  name: string;
+  propertyValue: number;
+  mortgageBalance: number;
+  interestRate: number;
+  loanTerm: number;
+  startDate: string;
+};
+
 interface MortgageEditDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: MortgageSubmitData) => void;
   initialData: Mortgage | null;
 }
 
