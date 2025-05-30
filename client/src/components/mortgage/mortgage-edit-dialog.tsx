@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -45,14 +45,7 @@ export function MortgageEditDialog({
 }: MortgageEditDialogProps) {
   const form = useForm<MortgageFormValues>({
     resolver: zodResolver(mortgageFormSchema),
-    defaultValues: initialData ? {
-      name: initialData.name,
-      propertyValue: Number(initialData.propertyValue).toLocaleString(),
-      mortgageBalance: Number(initialData.mortgageBalance).toLocaleString(),
-      interestRate: Number(initialData.interestRate).toString(),
-      loanTerm: initialData.loanTerm.toString(),
-      startDate: new Date(initialData.startDate).toISOString().split('T')[0],
-    } : {
+    defaultValues: {
       name: "My Primary Home",
       propertyValue: "",
       mortgageBalance: "",
@@ -61,6 +54,29 @@ export function MortgageEditDialog({
       startDate: new Date().toISOString().split('T')[0],
     },
   });
+
+  // Reset form when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      form.reset({
+        name: initialData.name,
+        propertyValue: Number(initialData.propertyValue).toLocaleString(),
+        mortgageBalance: Number(initialData.mortgageBalance).toLocaleString(),
+        interestRate: Number(initialData.interestRate).toString(),
+        loanTerm: initialData.loanTerm.toString(),
+        startDate: new Date(initialData.startDate).toISOString().split('T')[0],
+      });
+    } else {
+      form.reset({
+        name: "My Primary Home",
+        propertyValue: "",
+        mortgageBalance: "",
+        interestRate: "",
+        loanTerm: "30",
+        startDate: new Date().toISOString().split('T')[0],
+      });
+    }
+  }, [initialData, form]);
 
   const handleFormSubmit = (data: MortgageFormValues) => {
     onSubmit({
