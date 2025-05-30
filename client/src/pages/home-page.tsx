@@ -53,9 +53,7 @@ export default function HomePage() {
   const selectedMortgage =
     mortgages?.find((m) => m.id === selectedMortgageId) || null;
   
-  console.log("Debug - selectedMortgageId:", selectedMortgageId);
-  console.log("Debug - selectedMortgage:", selectedMortgage);
-  console.log("Debug - mortgages array:", mortgages);
+
 
   // Get the active scenario
   const activeScenario = scenarios?.find((s) => s.isActive === 1);

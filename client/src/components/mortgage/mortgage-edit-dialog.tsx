@@ -62,7 +62,7 @@ export function MortgageEditDialog({
         name: initialData.name,
         propertyValue: Number(initialData.propertyValue).toLocaleString(),
         mortgageBalance: Number(initialData.mortgageBalance).toLocaleString(),
-        interestRate: Number(initialData.interestRate).toString(),
+        interestRate: (Number(initialData.interestRate) * 100).toString(),
         loanTerm: initialData.loanTerm.toString(),
         startDate: new Date(initialData.startDate).toISOString().split('T')[0],
       });
@@ -83,7 +83,7 @@ export function MortgageEditDialog({
       name: data.name,
       propertyValue: data.propertyValue,
       mortgageBalance: data.mortgageBalance,
-      interestRate: data.interestRate,
+      interestRate: Number(data.interestRate) / 100, // Convert percentage to decimal
       loanTerm: parseInt(data.loanTerm),
       startDate: data.startDate,
     });
