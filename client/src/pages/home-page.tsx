@@ -390,6 +390,8 @@ export default function HomePage() {
                     className="bg-accent-500 hover:bg-accent-600 text-white"
                     onClick={() => {
                       console.log("Edit button clicked - selectedMortgageId:", selectedMortgageId);
+                      console.log("selectedMortgage data:", selectedMortgage);
+                      console.log("All mortgages:", mortgages);
                       setIsCreatingNewProperty(false);
                       setIsEditModalOpen(true);
                     }}
