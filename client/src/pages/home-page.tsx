@@ -31,10 +31,6 @@ export default function HomePage() {
   >({
     queryKey: ["/api/mortgages"],
     staleTime: 60000, // 1 minute
-    onSuccess: (data) => {
-      console.log("Mortgages loaded:", data);
-      console.log("Number of mortgages:", data?.length);
-    },
   });
 
   // Fetch scenarios for the selected mortgage
@@ -389,9 +385,6 @@ export default function HomePage() {
                     variant="default"
                     className="bg-accent-500 hover:bg-accent-600 text-white"
                     onClick={() => {
-                      console.log("Edit button clicked - selectedMortgageId:", selectedMortgageId);
-                      console.log("selectedMortgage data:", selectedMortgage);
-                      console.log("All mortgages:", mortgages);
                       setIsCreatingNewProperty(false);
                       setIsEditModalOpen(true);
                     }}
