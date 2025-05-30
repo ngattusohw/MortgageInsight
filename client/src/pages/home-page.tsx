@@ -18,6 +18,7 @@ import { useMutation } from "@tanstack/react-query";
 
 export default function HomePage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isCreatingNewProperty, setIsCreatingNewProperty] = useState(false);
   const [selectedMortgageId, setSelectedMortgageId] = useState<number | null>(
     null,
   );
@@ -74,20 +75,15 @@ export default function HomePage() {
     onSuccess: (newMortgage) => {
       console.log("New mortgage created:", newMortgage);
       
-      // Close the modal first
+      // Close the modal and reset creation state
       setIsEditModalOpen(false);
+      setIsCreatingNewProperty(false);
       
       // Invalidate the query to refresh the mortgages list
       queryClient.invalidateQueries({ queryKey: ["/api/mortgages"] });
       
-      // Wait for the query to finish and then set the new mortgage as selected
-      queryClient.getQueryCache().find({ queryKey: ["/api/mortgages"] })
-        ?.fetch()
-        .then(() => {
-          // Now that we have the latest mortgages, set the selected ID
-          console.log("Setting selected mortgage ID to:", newMortgage.id);
-          setSelectedMortgageId(newMortgage.id);
-        });
+      // Set the newly created mortgage as selected
+      setSelectedMortgageId(newMortgage.id);
       
       toast({
         title: "Mortgage created",
@@ -148,20 +144,21 @@ export default function HomePage() {
 
   const handleMortgageSubmit = (data: any) => {
     console.log("Processing mortgage submit:", { 
-      isUpdate: !!selectedMortgageId,
+      isCreatingNewProperty,
       selectedMortgageId,
       formData: data 
     });
     
-    // Clear selection before mutation to prevent accidental updates
-    if (!selectedMortgageId) {
+    if (isCreatingNewProperty) {
       // This is a create operation
       console.log("Creating new mortgage with data:", data);
       createMortgageMutation.mutate(data);
-    } else {
+    } else if (selectedMortgageId) {
       // This is an update operation
       console.log("Updating mortgage ID", selectedMortgageId, "with data:", data);
       updateMortgageMutation.mutate({ id: selectedMortgageId, data });
+    } else {
+      console.error("Invalid state: neither creating nor updating");
     }
   };
 
@@ -289,7 +286,7 @@ export default function HomePage() {
               <Button
                 size="lg"
                 onClick={() => {
-                  setSelectedMortgageId(null);
+                  setIsCreatingNewProperty(true);
                   setIsEditModalOpen(true);
                 }}
               >
@@ -392,6 +389,8 @@ export default function HomePage() {
                     variant="default"
                     className="bg-accent-500 hover:bg-accent-600 text-white"
                     onClick={() => {
+                      console.log("Edit button clicked - selectedMortgageId:", selectedMortgageId);
+                      setIsCreatingNewProperty(false);
                       setIsEditModalOpen(true);
                     }}
                   >
@@ -401,7 +400,8 @@ export default function HomePage() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setSelectedMortgageId(null);
+                      console.log("Add property button clicked - setting creation mode");
+                      setIsCreatingNewProperty(true);
                       setIsEditModalOpen(true);
                     }}
                   >
@@ -475,9 +475,12 @@ export default function HomePage() {
 
       <MortgageEditDialog
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setIsCreatingNewProperty(false);
+        }}
         onSubmit={handleMortgageSubmit}
-        initialData={selectedMortgageId ? selectedMortgage : null}
+        initialData={isCreatingNewProperty ? null : selectedMortgage}
       />
     </div>
   );
