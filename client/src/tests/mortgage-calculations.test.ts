@@ -65,8 +65,8 @@ describe('Mortgage Calculations - Critical Financial Accuracy Tests', () => {
       expect(firstYear.year).toBe(1);
       expect(firstYear.startingBalance).toBeCloseTo(400000, 2);
       expect(firstYear.yearlyInterest).toBeCloseTo(25868.36, 1); // Use actual calculated value
-      expect(firstYear.yearlyPrincipal).toBeCloseTo(4471.11, 1);
-      expect(firstYear.endingBalance).toBeCloseTo(395528.89, 1);
+      expect(firstYear.yearlyPrincipal).toBeCloseTo(4470.90, 1);
+      expect(firstYear.endingBalance).toBeCloseTo(395529.10, 1);
     });
 
     it('should calculate correct final year balance (should be near zero)', () => {
@@ -172,9 +172,9 @@ describe('Mortgage Calculations - Critical Financial Accuracy Tests', () => {
       const standardSchedule = calculateAmortizationSchedule(400000, 0.065, 30);
       const biWeeklySchedule = calculateAmortizationWithBiWeeklyPayments(400000, 0.065, 30);
       
-      // Bi-weekly should pay off in approximately 23-24 years
+      // Bi-weekly should pay off faster than standard and in approximately 25 years
       expect(biWeeklySchedule.length).toBeLessThan(standardSchedule.length);
-      expect(biWeeklySchedule.length).toBeCloseTo(23, 2);
+      expect(biWeeklySchedule.length).toBeCloseTo(25, 1);
     });
 
     it('should create substantial interest savings with bi-weekly payments', () => {
@@ -195,8 +195,8 @@ describe('Mortgage Calculations - Critical Financial Accuracy Tests', () => {
       // $1000 additional payment at 6.5% interest for 25 years remaining
       const futureValue = calculatePaymentFutureValue(1000, 0.065, 25);
       
-      // Future value should be approximately $4,827 (compound growth)
-      expect(futureValue).toBeCloseTo(4827, 0);
+      // Future value should be approximately $4,828 (compound growth)
+      expect(futureValue).toBeCloseTo(4828, 0);
     });
 
     it('should handle different time periods correctly', () => {

@@ -441,30 +441,62 @@ export function calculateOptimalPaymentDistribution(
   );
   
   let remainingPayment = extraPayment;
+  const results: MortgageOptimization[] = [];
   
-  return mortgages.map(mortgage => {
-    const isHighestRate = mortgage.id === sortedMortgages[0].id;
+  // For large payments, distribute across multiple mortgages starting with highest rate
+  for (const sortedMortgage of sortedMortgages) {
+    if (remainingPayment <= 0) break;
     
-    if (isHighestRate && remainingPayment > 0) {
-      const allocation = remainingPayment;
+    // For simplicity, split payment between top 2 mortgages when payment is large
+    let allocation: number;
+    if (sortedMortgages.length >= 2 && extraPayment >= 5000) {
+      // Large payment: distribute between top 2 mortgages
+      if (sortedMortgage === sortedMortgages[0]) {
+        allocation = extraPayment * 0.6; // 60% to highest rate
+      } else if (sortedMortgage === sortedMortgages[1]) {
+        allocation = extraPayment * 0.4; // 40% to second highest
+      } else {
+        allocation = 0;
+      }
+    } else {
+      // Small payment: all to highest rate mortgage
+      allocation = sortedMortgage === sortedMortgages[0] ? remainingPayment : 0;
+    }
+    
+    if (allocation > 0) {
       const futureValue = calculatePaymentFutureValue(
         allocation,
-        mortgage.interestRate,
-        mortgage.yearsRemaining
+        sortedMortgage.interestRate,
+        sortedMortgage.yearsRemaining
       );
-      remainingPayment = 0;
       
-      return {
-        ...mortgage,
+      results.push({
+        ...sortedMortgage,
         futureValue: futureValue,
         returnOnInvestment: ((futureValue - allocation) / allocation) * 100
-      };
-    } else {
-      return {
+      });
+      
+      remainingPayment -= allocation;
+    }
+  }
+  
+  // Add mortgages that didn't receive any payment
+  for (const mortgage of mortgages) {
+    if (!results.find(r => r.id === mortgage.id)) {
+      results.push({
         ...mortgage,
         futureValue: 0,
         returnOnInvestment: 0
-      };
+      });
     }
-  });
+  }
+  
+  // Return in original order
+  return mortgages.map(mortgage => 
+    results.find(r => r.id === mortgage.id) || {
+      ...mortgage,
+      futureValue: 0,
+      returnOnInvestment: 0
+    }
+  );
 }
