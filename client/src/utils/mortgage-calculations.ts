@@ -29,7 +29,7 @@ export function formatPercentage(value: number, decimals: number = 3): string {
     style: 'percent',
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals
-  }).format(value / 100);
+  }).format(value);
 }
 
 /**

@@ -12,9 +12,11 @@ interface MortgageDetailsCardProps {
 }
 
 export function MortgageDetailsCard({ mortgage, onEditClick }: MortgageDetailsCardProps) {
+  console.log("DEBUG - Mortgage details card data:", mortgage);
+  
   const monthlyPayment = mortgage ? calculateMonthlyPayment(
     Number(mortgage.mortgageBalance),
-    Number(mortgage.interestRate) / 100,
+    Number(mortgage.interestRate), // Already stored as decimal, don't divide by 100
     Number(mortgage.loanTerm)
   ) : 0;
   

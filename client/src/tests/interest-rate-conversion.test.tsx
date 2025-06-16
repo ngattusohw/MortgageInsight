@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MortgageEditDialog } from '../components/mortgage/mortgage-edit-dialog';
+import { formatPercentage } from '../utils/mortgage-calculations';
 
 // Mock data for testing
 const mockMortgage = {
@@ -16,9 +17,9 @@ const mockMortgage = {
   startDate: "2025-01-01"
 };
 
-describe('Interest Rate Conversion Bug', () => {
+describe('Interest Rate Conversion and Formatting', () => {
   let queryClient: QueryClient;
-  let mockOnSubmit: vi.Mock;
+  let mockOnSubmit: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     queryClient = new QueryClient({
@@ -28,6 +29,27 @@ describe('Interest Rate Conversion Bug', () => {
       }
     });
     mockOnSubmit = vi.fn();
+  });
+
+  describe('formatPercentage function', () => {
+    it('should format decimal values correctly as percentages', () => {
+      expect(formatPercentage(0.07125)).toBe('7.125%');
+      expect(formatPercentage(0.065)).toBe('6.500%');
+      expect(formatPercentage(0.0025)).toBe('0.250%');
+      expect(formatPercentage(0.1)).toBe('10.000%');
+    });
+
+    it('should handle edge cases', () => {
+      expect(formatPercentage(0)).toBe('0.000%');
+      expect(formatPercentage(1)).toBe('100.000%');
+      expect(formatPercentage(0.001)).toBe('0.100%');
+    });
+
+    it('should respect decimal places parameter', () => {
+      expect(formatPercentage(0.07125, 2)).toBe('7.13%');
+      expect(formatPercentage(0.07125, 4)).toBe('7.1250%');
+      expect(formatPercentage(0.07125, 0)).toBe('7%');
+    });
   });
 
   it('should display interest rate correctly when editing existing mortgage', async () => {

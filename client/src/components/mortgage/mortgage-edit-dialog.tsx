@@ -79,11 +79,20 @@ export function MortgageEditDialog({
   }, [initialData, form]);
 
   const handleFormSubmit = (data: MortgageFormValues) => {
+    console.log("DEBUG - Form raw data:", data);
+    const interestRateDecimal = Number(data.interestRate) / 100;
+    console.log("DEBUG - Interest rate conversion:", {
+      input: data.interestRate,
+      inputAsNumber: Number(data.interestRate),
+      divided: interestRateDecimal,
+      final: interestRateDecimal
+    });
+    
     onSubmit({
       name: data.name,
       propertyValue: data.propertyValue,
       mortgageBalance: data.mortgageBalance,
-      interestRate: Number(data.interestRate) / 100, // Convert percentage to decimal
+      interestRate: interestRateDecimal,
       loanTerm: parseInt(data.loanTerm),
       startDate: data.startDate,
     });
