@@ -40,14 +40,14 @@ export function AmortizationCard({ mortgage, additionalPayment }: AmortizationCa
   // Original amortization schedule
   const originalSchedule = calculateAmortizationSchedule(
     Number(mortgage.mortgageBalance),
-    Number(mortgage.interestRate) / 100,
+    Number(mortgage.interestRate),
     Number(mortgage.loanTerm)
   );
   
   // Schedule with extra payments
   const newSchedule = calculateAmortizationWithExtraPayment(
     Number(mortgage.mortgageBalance),
-    Number(mortgage.interestRate) / 100,
+    Number(mortgage.interestRate),
     Number(mortgage.loanTerm),
     additionalPayment
   );
