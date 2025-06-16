@@ -42,7 +42,7 @@ export function PaymentValueCard({ mortgage }: PaymentValueCardProps) {
         // Original amortization schedule
         const originalSchedule = calculateAmortizationSchedule(
           Number(mortgage.mortgageBalance),
-          Number(mortgage.interestRate) / 100,
+          Number(mortgage.interestRate),
           Number(mortgage.loanTerm)
         );
         
@@ -52,7 +52,7 @@ export function PaymentValueCard({ mortgage }: PaymentValueCardProps) {
         // Calculate schedule with lump sum payment
         const scheduleWithLumpSum = calculateAmortizationWithLumpSum(
           Number(mortgage.mortgageBalance),
-          Number(mortgage.interestRate) / 100,
+          Number(mortgage.interestRate),
           Number(mortgage.loanTerm),
           principalPayment
         );

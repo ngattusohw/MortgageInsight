@@ -49,7 +49,7 @@ export function OptimalPaymentCard({ mortgages, isLoading }: OptimalPaymentCardP
           const testPayment = 1000;
           const futureValue = calculatePaymentFutureValue(
             testPayment,
-            interestRate / 100,
+            interestRate,
             yearsRemaining
           );
           

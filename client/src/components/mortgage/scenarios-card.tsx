@@ -85,14 +85,14 @@ export function ScenariosCard({ scenarios, mortgage, onCreateScenario, onUpdateS
   // Calculate original total payments
   const originalSchedule = calculateAmortizationSchedule(
     Number(mortgage.mortgageBalance),
-    Number(mortgage.interestRate) / 100,
+    Number(mortgage.interestRate),
     Number(mortgage.loanTerm)
   );
   
   const originalMonthlyPayment = Number(mortgage.mortgageBalance) * 
-    (Number(mortgage.interestRate) / 100 / 12) * 
-    Math.pow(1 + Number(mortgage.interestRate) / 100 / 12, Number(mortgage.loanTerm) * 12) / 
-    (Math.pow(1 + Number(mortgage.interestRate) / 100 / 12, Number(mortgage.loanTerm) * 12) - 1);
+    (Number(mortgage.interestRate) / 12) * 
+    Math.pow(1 + Number(mortgage.interestRate) / 12, Number(mortgage.loanTerm) * 12) / 
+    (Math.pow(1 + Number(mortgage.interestRate) / 12, Number(mortgage.loanTerm) * 12) - 1);
   
   const originalTotalPayments = originalMonthlyPayment * 12 * Number(mortgage.loanTerm);
 
